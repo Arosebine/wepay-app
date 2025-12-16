@@ -1,6 +1,7 @@
 export type Role = 'USER' | 'AGENT' | 'MERCHANT' | 'INSTITUTION';
 export type Register = {
   email?: string;
+  phone: string;
   bvn: string;
   role: Role;
   pin: string;

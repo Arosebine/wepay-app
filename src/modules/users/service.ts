@@ -101,7 +101,7 @@ export async function validateBVN(bvn: string) {
   const bvnHash = hashToken(bvn);
 
   const existing = await prisma.user.findFirst({
-    where: { bvn: bvnHash },
+    where: { bvn: bvn, emailVerified: true },
   });
 
   return !!existing;
@@ -328,37 +328,33 @@ export async function createEmbedlyUser(userId: string, data: EmbedlyInput) {
 }
 
 export async function getBVNData(value: BVNInput) {
-  try {
-    const data = await Youverify.verifyBVN({
-      id: value.bvn,
-      isSubjectConsent: true,
-      premiumBVN: true,
-    });
+  const data = await Youverify.verifyBVN({
+    id: value.bvn,
+    isSubjectConsent: true,
+    premiumBVN: true,
+  });
 
-    return {
-      ...value,
-      extra: {
-        name: data?.firstName + ' ' + data?.lastName,
-        dob: toISODate(data?.dateOfBirth),
-        country: data?.country,
-        gender: data?.gender,
-        phone: data?.mobile,
-      },
-      embedly: {
-        dob: toISODate(data?.dateOfBirth),
-        country: data?.country,
-        gender: data?.gender,
-        phone: data?.mobile,
-        address: data?.address?.addressLine,
-        city: data?.address?.town,
-        firstName: data?.firstName,
-        lastName: data?.lastName,
-        middleName: data?.middleName,
-      },
-    };
-  } catch (error) {
-    throw error;
-  }
+  return {
+    ...value,
+    extra: {
+      name: data?.firstName + ' ' + data?.lastName,
+      dob: toISODate(data?.dateOfBirth),
+      country: data?.country,
+      gender: data?.gender,
+      phone: data?.mobile,
+    },
+    embedly: {
+      dob: toISODate(data?.dateOfBirth),
+      country: data?.country,
+      gender: data?.gender,
+      phone: data?.mobile,
+      address: data?.address?.addressLine,
+      city: data?.address?.town,
+      firstName: data?.firstName,
+      lastName: data?.lastName,
+      middleName: data?.middleName,
+    },
+  };
 }
 
 export async function captureFingerPrint(

@@ -15,12 +15,81 @@ const limiter = new Bottleneck({
   minTime: 333,
 });
 
+// export async function register(data: Register) {
+//   if (data?.email) {
+//     const existing = await prisma.user.findFirst({
+//       where: { email: data.email },
+//     });
+//     if (existing) throw new Error('Email already in use');
+//   }
+
+//   const record: Record<string, unknown> = {
+//     ...data.extra,
+//   };
+
+//   if (data.role === 'AGENT') record.agent = { create: {} };
+//   if (data.role === 'MERCHANT' || data.role === 'INSTITUTION')
+//     record.merchant = { create: {} };
+
+//   if (data?.email !== undefined) record.email = data.email;
+
+//   const uniqueId = generateUserSafeId();
+
+//   const user = await prisma.$transaction(async (tx) => {
+//     const _user = await tx.user.create({
+//       data: {
+//         bvn: data.bvn, //Hashing will come when user add emails,
+//         ...record,
+//         uniqueID: uniqueId,
+//       },
+//       include: { address: true },
+//     });
+
+//     await tx.auditLog.create({
+//       data: { userId: _user.id, action: 'REGISTER', ip: null },
+//     });
+
+//     return _user;
+//   });
+
+//   limiter.schedule(() => sendOTP(user));
+
+//   return user;
+// }
+
+
+
 export async function register(data: Register) {
+  // const bvnHash = hashToken(data.bvn);
+  const existingUnverifiedUser = await prisma.user.findFirst({
+    where: {
+      bvn: data.bvn,
+      phone: data.phone,
+      emailVerified: false,
+    },
+  });
+
+  if (existingUnverifiedUser) {
+    limiter.schedule(() => sendOTP(existingUnverifiedUser));
+    return existingUnverifiedUser;
+  }
+
+  const phoneExists = await prisma.user.findFirst({
+    where: { phone: data.phone },
+  });
+
+  if (phoneExists) {
+    throw new CustomError('Phone number already in use', 409);
+  }
+
   if (data?.email) {
-    const existing = await prisma.user.findFirst({
+    const emailExists = await prisma.user.findFirst({
       where: { email: data.email },
     });
-    if (existing) throw new Error('Email already in use');
+
+    if (emailExists) {
+      throw new CustomError('Email already in use', 409);
+    }
   }
 
   const record: Record<string, unknown> = {
@@ -28,17 +97,21 @@ export async function register(data: Register) {
   };
 
   if (data.role === 'AGENT') record.agent = { create: {} };
-  if (data.role === 'MERCHANT' || data.role === 'INSTITUTION')
+  if (data.role === 'MERCHANT' || data.role === 'INSTITUTION') {
     record.merchant = { create: {} };
+  }
 
-  if (data?.email !== undefined) record.email = data.email;
+  if (data?.email !== undefined) {
+    record.email = data.email;
+  }
 
   const uniqueId = generateUserSafeId();
 
   const user = await prisma.$transaction(async (tx) => {
     const _user = await tx.user.create({
       data: {
-        bvn: data.bvn, //Hashing will come when user add emails,
+        bvn: data.bvn,
+        phone: data.phone,
         ...record,
         uniqueID: uniqueId,
       },
@@ -46,7 +119,11 @@ export async function register(data: Register) {
     });
 
     await tx.auditLog.create({
-      data: { userId: _user.id, action: 'REGISTER', ip: null },
+      data: {
+        userId: _user.id,
+        action: 'REGISTER',
+        ip: null,
+      },
     });
 
     return _user;
@@ -56,6 +133,10 @@ export async function register(data: Register) {
 
   return user;
 }
+
+
+
+
 
 export async function forgotPin(payload: {
   phone?: string;
