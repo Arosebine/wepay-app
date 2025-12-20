@@ -60,10 +60,10 @@ const limiter = new Bottleneck({
 
 
 export async function register(data: Register) {
-  // const bvnHash = hashToken(data.bvn);
+  const bvnHash = hashToken(data.bvn);
   const existingUnverifiedUser = await prisma.user.findFirst({
     where: {
-      bvn: data.bvn,
+      bvn: bvnHash,
       phone: data.phone,
       emailVerified: false,
     },
@@ -110,7 +110,7 @@ export async function register(data: Register) {
   const user = await prisma.$transaction(async (tx) => {
     const _user = await tx.user.create({
       data: {
-        bvn: data.bvn,
+        bvn: bvnHash,
         phone: data.phone,
         ...record,
         uniqueID: uniqueId,
