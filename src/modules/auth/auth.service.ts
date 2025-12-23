@@ -75,7 +75,9 @@ export async function register(data: Register) {
   }
 
   const phoneExists = await prisma.user.findFirst({
-    where: { phone: data.phone },
+    where: { 
+      phone: data.phone,
+     },
   });
 
   if (phoneExists) {
