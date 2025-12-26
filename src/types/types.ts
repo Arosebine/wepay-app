@@ -5,6 +5,8 @@ export type Register = {
   bvn: string;
   role: Role;
   pin: string;
+  uniqueID?: string;
+  fingerPrint?: string;
   extra: Record<string, any>;
 };
 export type Login = {

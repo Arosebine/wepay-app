@@ -9,58 +9,17 @@ import { User } from '@prisma/client';
 import Bottleneck from 'bottleneck';
 import { sendOTP, generateUserSafeId, amountInNaira } from '@/utils';
 import CustomError from '@/utils/customError';
+import { Prisma } from '@prisma/client';
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: 333,
 });
 
-// export async function register(data: Register) {
-//   if (data?.email) {
-//     const existing = await prisma.user.findFirst({
-//       where: { email: data.email },
-//     });
-//     if (existing) throw new Error('Email already in use');
-//   }
-
-//   const record: Record<string, unknown> = {
-//     ...data.extra,
-//   };
-
-//   if (data.role === 'AGENT') record.agent = { create: {} };
-//   if (data.role === 'MERCHANT' || data.role === 'INSTITUTION')
-//     record.merchant = { create: {} };
-
-//   if (data?.email !== undefined) record.email = data.email;
-
-//   const uniqueId = generateUserSafeId();
-
-//   const user = await prisma.$transaction(async (tx) => {
-//     const _user = await tx.user.create({
-//       data: {
-//         bvn: data.bvn, //Hashing will come when user add emails,
-//         ...record,
-//         uniqueID: uniqueId,
-//       },
-//       include: { address: true },
-//     });
-
-//     await tx.auditLog.create({
-//       data: { userId: _user.id, action: 'REGISTER', ip: null },
-//     });
-
-//     return _user;
-//   });
-
-//   limiter.schedule(() => sendOTP(user));
-
-//   return user;
-// }
-
-
 
 export async function register(data: Register) {
   const bvnHash = hashToken(data.bvn);
+
   const existingUnverifiedUser = await prisma.user.findFirst({
     where: {
       bvn: bvnHash,
@@ -74,26 +33,6 @@ export async function register(data: Register) {
     return existingUnverifiedUser;
   }
 
-  const phoneExists = await prisma.user.findFirst({
-    where: { 
-      phone: data.phone,
-     },
-  });
-
-  if (phoneExists) {
-    throw new CustomError('Phone number already in use', 409);
-  }
-
-  if (data?.email) {
-    const emailExists = await prisma.user.findFirst({
-      where: { email: data.email },
-    });
-
-    if (emailExists) {
-      throw new CustomError('Email already in use', 409);
-    }
-  }
-
   const record: Record<string, unknown> = {
     ...data.extra,
   };
@@ -103,47 +42,60 @@ export async function register(data: Register) {
     record.merchant = { create: {} };
   }
 
-  if (data?.email !== undefined) {
+  if (data.email !== undefined) {
     record.email = data.email;
   }
 
   const uniqueId = generateUserSafeId();
 
-  const user = await prisma.$transaction(async (tx) => {
-    const _user = await tx.user.create({
-      data: {
-        bvn: bvnHash,
-        phone: data.phone,
-        ...record,
-        uniqueID: uniqueId,
-      },
-      include: { address: true },
+  try {
+    const user = await prisma.$transaction(async (tx) => {
+      const _user = await tx.user.create({
+        data: {
+          bvn: bvnHash,
+          phone: data.phone,
+          ...record,
+          uniqueID: uniqueId,
+        },
+        include: { address: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: _user.id,
+          action: 'REGISTER',
+          ip: null,
+        },
+      });
+
+      return _user;
     });
 
-    await tx.auditLog.create({
-      data: {
-        userId: _user.id,
-        action: 'REGISTER',
-        ip: null,
-      },
-    });
+    limiter.schedule(() => sendOTP(user));
+    return user;
 
-    return _user;
-  });
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        const target = error.meta?.target as string[];
 
-  limiter.schedule(() => sendOTP(user));
+        if (target?.includes('phone')) {
+          throw new CustomError('Phone number and BVN already in use', 409);
+        }
 
-  return user;
+        if (target?.includes('email')) {
+          throw new CustomError('Email already in use', 409);
+        }
+      }
+    }
+
+    throw error;
+  }
 }
 
 
 
-
-
-export async function forgotPin(payload: {
-  phone?: string;
-  email?: string;
-}): Promise<boolean> {
+export async function forgotPin(payload: {phone?: string; email?: string; }): Promise<boolean> {
   const user = await prisma.user.findFirst({
     where: {
       OR: [

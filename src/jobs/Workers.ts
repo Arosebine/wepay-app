@@ -42,7 +42,7 @@ export class Workers {
       },
       {
         connection: redisClient,
-        concurrency: 5,
+        concurrency: 2,
       },
     );
   }
@@ -61,7 +61,7 @@ export class Workers {
       },
       {
         connection: redisClient,
-        concurrency: 5,
+        concurrency: 2,
       },
     );
   }
@@ -96,7 +96,7 @@ export class Workers {
       },
       {
         connection: redisClient,
-        concurrency: 5,
+        concurrency: 2,
       },
     );
   }
@@ -115,7 +115,7 @@ export class Workers {
       },
       {
         connection: redisClient,
-        concurrency: 5,
+        concurrency: 2,
       },
     );
   }
@@ -135,7 +135,7 @@ export class Workers {
       },
       {
         connection: redisClient,
-        concurrency: 5,
+        concurrency: 2,
       },
     );
   }
