@@ -22,9 +22,12 @@ export async function register(data: Register) {
 
   const existingUnverifiedUser = await prisma.user.findFirst({
     where: {
-      bvn: bvnHash,
       phone: data.phone,
       emailVerified: false,
+      OR: [
+        { bvn: bvnHash },
+        { bvn: data.bvn },
+      ],
     },
   });
 

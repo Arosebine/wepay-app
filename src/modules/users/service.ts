@@ -101,11 +101,18 @@ export async function validateBVN(bvn: string) {
   const bvnHash = hashToken(bvn);
 
   const existing = await prisma.user.findFirst({
-    where: { bvn: bvnHash, emailVerified: true },
+    where: {
+      emailVerified: true,
+      OR: [
+        { bvn: bvnHash },
+        { bvn: bvn },
+      ],
+    },
   });
 
-  return !!existing;
+  return Boolean(existing);
 }
+
 
 export async function getUserByPhone(phone: string) {
   if (!phone) throw new CustomError('Phone Number is required', 422);
