@@ -41,7 +41,7 @@ export class AuthController {
       const user = await authService.register(payload as any);
 
       return res.status(201).json({
-        message: 'User created successfully',
+        message: 'User created successfully', 
         status: 201,
         success: true,
         data: user,
