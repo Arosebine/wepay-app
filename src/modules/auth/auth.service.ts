@@ -55,7 +55,7 @@ export async function register(data: Register) {
     const user = await prisma.$transaction(async (tx) => {
       const _user = await tx.user.create({
         data: {
-          bvn: bvnHash,
+          bvn: data.bvn,
           phone: data.phone,
           ...record,
           uniqueID: uniqueId,
