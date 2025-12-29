@@ -18,83 +18,69 @@ const limiter = new Bottleneck({
 
 
 export async function register(data: Register) {
-  const bvnHash = hashToken(data.bvn);
+  const phone = data.phone || data.extra?.phone;
 
-  const existingUnverifiedUser = await prisma.user.findFirst({
+  if (!phone) {
+    throw new CustomError("Phone number is required", 400);
+  }
+
+  const existingUser = await prisma.user.findFirst({
     where: {
-      phone: data.phone,
-      emailVerified: false,
-      OR: [
-        { bvn: bvnHash },
-        { bvn: data.bvn },
-      ],
+      phone,
+      bvn: data.bvn,
     },
   });
 
-  if (existingUnverifiedUser) {
-    limiter.schedule(() => sendOTP(existingUnverifiedUser));
-    return existingUnverifiedUser;
+  if (existingUser && !existingUser.emailVerified) {
+    await limiter.schedule(() => sendOTP(existingUser));
+    return existingUser;
+  }
+
+  if (existingUser && existingUser.emailVerified) {
+    throw new CustomError("User already registered", 409);
   }
 
   const record: Record<string, unknown> = {
     ...data.extra,
   };
 
-  if (data.role === 'AGENT') record.agent = { create: {} };
-  if (data.role === 'MERCHANT' || data.role === 'INSTITUTION') {
+  if (data.role === "AGENT") record.agent = { create: {} };
+  if (["MERCHANT", "INSTITUTION"].includes(data.role)) {
     record.merchant = { create: {} };
   }
 
-  if (data.email !== undefined) {
+  if (data.email) {
     record.email = data.email;
   }
 
   const uniqueId = generateUserSafeId();
 
-  try {
-    const user = await prisma.$transaction(async (tx) => {
-      const _user = await tx.user.create({
-        data: {
-          bvn: data.bvn,
-          phone: data.phone,
-          ...record,
-          uniqueID: uniqueId,
-        },
-        include: { address: true },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          userId: _user.id,
-          action: 'REGISTER',
-          ip: null,
-        },
-      });
-
-      return _user;
+  const user = await prisma.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
+      data: {
+        bvn: data.bvn,
+        phone,
+        uniqueID: uniqueId,
+        ...record,
+      },
     });
 
-    limiter.schedule(() => sendOTP(user));
-    return user;
+    await tx.auditLog.create({
+      data: {
+        userId: createdUser.id,
+        action: "REGISTER",
+        ip: null,
+      },
+    });
 
-  } catch (error: any) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        const target = error.meta?.target as string[];
+    return createdUser;
+  });
 
-        if (target?.includes('phone')) {
-          throw new CustomError('Phone number and BVN already in use', 409);
-        }
+  await limiter.schedule(() => sendOTP(user));
 
-        if (target?.includes('email')) {
-          throw new CustomError('Email already in use', 409);
-        }
-      }
-    }
-
-    throw error;
-  }
+  return user;
 }
+
 
 
 
@@ -120,6 +106,19 @@ export async function forgotPin(payload: {phone?: string; email?: string; }): Pr
     data: { userId: user.id, action: 'FORGOT_PIN_CODE' },
   });
   return true;
+}
+
+
+export async function getUserDetailByPhone(payload: { phone?: string; }) {
+  const user = await prisma.user.findFirst({
+    where: {
+          phone: payload?.phone,        
+    },
+  });
+
+  if (!user) throw new CustomError('User not found', 404);
+
+  return { ...user };
 }
 
 export async function login(data: Login) {

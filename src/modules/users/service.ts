@@ -103,10 +103,7 @@ export async function validateBVN(bvn: string) {
   const existing = await prisma.user.findFirst({
     where: {
       emailVerified: true,
-      OR: [
-        { bvn: bvnHash },
-        { bvn: bvn },
-      ],
+      bvn: bvnHash ,
     },
   });
 

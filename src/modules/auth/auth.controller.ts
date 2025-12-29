@@ -79,6 +79,24 @@ export class AuthController {
     }
   }
 
+
+  static async getUserDetails(req: Request, res: Response) {
+    try {
+      const { error, value } = ValidateForgotPin().validate(req.body);
+      if (error) throw new CustomError(error.details[0].message, 422);
+
+      const payload = await authService.getUserDetailByPhone(value);
+
+      return res.status(200).json({
+        message: 'User details retrieved successfully',
+        data: payload,
+      });
+    } catch (error: any) {
+      const e = useErrorParser(error);
+      return res.status(e.status).json(e);
+    }
+  }
+
   static async login(req: Request, res: Response) {
     try {
       const { error, value } = ValidateLogin().validate(req.body);

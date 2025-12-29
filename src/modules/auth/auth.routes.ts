@@ -17,7 +17,8 @@ router.post('/pin/forgot', AuthController.forgotPin);
 router.put('/pin/reset', AuthController.resetPin);
 router.put('/pin/update', AuthController.updatePin);
 router.get('/bvn', AuthController.getBVNDetails);
+router.get('/user-details', AuthController.getUserDetails);
 
 // Forget Pin
 
-export default router;
+export default router; 
