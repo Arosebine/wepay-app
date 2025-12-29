@@ -21,4 +21,4 @@ router.get('/user-details', AuthController.getUserDetails);
 
 // Forget Pin
 
-export default router; 
+export default router;
