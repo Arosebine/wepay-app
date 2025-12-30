@@ -10,42 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
         with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
-
-      - name: Deploy with PM2
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
-          set -e
-
-          APP_DIR="/root/wepay-app"
-
-          if [ -d "$APP_DIR/.git" ]; then
-            echo "Updating existing repository..."
-            cd $APP_DIR
-            git fetch --all
-            git reset --hard origin/main
-          else
-            echo "Cloning repository..."
-            rm -rf $APP_DIR
-            git clone git@github.com:WePay-Ng/backend-node.git $APP_DIR
-            cd $APP_DIR
-          fi
-
-          echo "Installing dependencies..."
-          yarn install --frozen-lockfile
-
-          echo "Building application..."
-          yarn build
-
-          echo "Restarting PM2..."
-          pm2 restart backend-node --update-env || \
-          pm2 start dist/server.js --name backend-node
-
-          pm2 save
-          EOF
+          host: ${{ secrets.DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            echo "Deploying..."

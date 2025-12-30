@@ -344,4 +344,32 @@ export class AuthController {
       return res.status(e.status).json(e);
     }
   }
+
+
+
+
+  static async deleteUserAccount(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!id) throw new CustomError('Unauthorized', 402);
+
+      const data = await authService.deleteUserAccount(id);
+
+      return res.status(200).json({
+        message: 'User account deleted successfully',
+        success: true,
+        data,
+      });
+    } catch (error: any) {
+      const e = useErrorParser(error);
+      return res.status(e.status).json(e);
+    }
+  }
+
+
+
+
+
+
+
 }

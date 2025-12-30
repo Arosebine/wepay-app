@@ -110,16 +110,36 @@ export async function forgotPin(payload: {phone?: string; email?: string; }): Pr
 
 
 export async function getUserDetailByPhone(payload: { phone?: string; }) {
+  try {
   const user = await prisma.user.findFirst({
     where: {
           phone: payload?.phone,        
     },
   });
-
-  if (!user) throw new CustomError('User not found', 404);
-
   return { ...user };
+  }catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new CustomError('This account does not exist', 404);
+      }
+      throw error;
+  }
 }
+
+
+export async function deleteUserAccount(userId: string) {
+  try {
+    const user = await prisma.user.delete({
+      where: { id: userId },
+    });
+    return user;
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      throw new CustomError('User not found', 404);
+    }
+    throw error;
+  }
+}
+
 
 export async function login(data: Login) {
   const { email, phone, pin } = data;
