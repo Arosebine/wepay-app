@@ -1,5 +1,5 @@
 import { prisma } from '../../prisma/client';
-import { hashPassword, hashToken, verifyPin } from '../../utils/hash';
+import { hashPassword, hashPin, hashToken, verifyPin } from '../../utils/hash';
 import { nanoid } from 'nanoid';
 import { environment } from '../../config/env';
 import { signAccessToken } from '../../utils/jwt';
@@ -250,10 +250,11 @@ export async function resetPassword(data: ResetPassword) {
 }
 
 export async function resetPin(user: User, data: { pin: string }) {
+  const hashedPin = await hashPin(data.pin);
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      pin: data.pin,
+      pin: hashedPin,
     },
   });
 
