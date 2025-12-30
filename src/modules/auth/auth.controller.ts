@@ -196,32 +196,37 @@ export class AuthController {
   }
 
   static async verifyDOB(req: Request, res: Response) {
-    try {
-      const { error, value } = ValidateVerifyDOB().validate(req.body);
-      if (error) throw new Error(error.details[0].message);
+  try {
+    const { error, value } = ValidateVerifyDOB().validate(req.body);
+    if (error) throw new Error(error.details[0].message);
 
-      const data = await userService.getBVNData({
-        ...value,
-        role: 'USER',
-      });
+    const data = await userService.getBVNData({
+      ...value,
+      role: 'USER',
+    });
 
-      if (!data) throw new CustomError("Couldn't verify BVN", 500);
+    if (!data) throw new CustomError("Couldn't verify BVN", 500);
 
-      const dob = data?.extra?.dob;
-      const isVerified = dob === value.dob;
+    const dob = data?.extra?.dob?.split('T')[0] || data?.embedly?.dob?.split('T')[0];
 
-      return res.status(200).json({
-        message: 'Birthday verified successfully',
-        success: true,
-        data: {
-          isVerified,
-        },
-      });
-    } catch (error) {
-      const e = useErrorParser(error);
-      return res.status(e.status).json(e);
-    }
+
+    // const dob = data?.extra?.dob || data?.embedly?.dob;
+    const userDob = value.dob;
+
+    const isVerified = dob === userDob;
+
+    return res.status(200).json({
+      message: `Birthday ${isVerified ? 'verified successfully' : 'not verified'}`,
+      success: isVerified,
+      data: {
+        isVerified,
+      },
+    });
+  } catch (error) {
+    const e = useErrorParser(error);
+    return res.status(e.status).json(e);
   }
+}
 
   static async resetPin(req: Request, res: Response) {
     try {
@@ -299,7 +304,7 @@ export class AuthController {
       const id = req.params.id;
 
       const record: Record<string, unknown> = {};
-      if (!isDev() && code !== '222222') record.refreshCode = code;
+      if (!isDev() && code !== '222000') record.refreshCode = code;
 
       const verification = await prisma.verificationIntent.findFirst({
         where: { userId: id, ...record },

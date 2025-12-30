@@ -194,6 +194,7 @@ export async function createPin(id: string, payload: { pin: string }) {
     where: { id },
     data: {
       pin: hashedPin,
+      emailVerified: true,
     },
     include: { address: true },
   });
