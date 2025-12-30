@@ -160,7 +160,7 @@ export async function login(data: Login) {
 
   if (!user) throw new CustomError('Invalid credentials', 401);
 
-  if (!user.pin) throw new CustomError('User has no pin set', 400);
+  if (!user.pin) throw new CustomError('User has not its pin set yet', 400);
 
   const ok = await verifyPin(user.pin, pin);
 
