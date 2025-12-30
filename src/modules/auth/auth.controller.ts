@@ -205,7 +205,7 @@ export class AuthController {
       role: 'USER',
     });
 
-    if (!data) throw new CustomError("Couldn't verify your BVN", 500);
+    if (!data) throw new CustomError("Couldn't verify your BVN details", 500);
 
     const dob = data?.extra?.dob?.split('T')[0] || data?.embedly?.dob?.split('T')[0];
 
