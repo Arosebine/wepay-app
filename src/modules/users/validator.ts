@@ -110,3 +110,10 @@ export function ValidateFingerPrint() {
     fingerPrint: Joi.string().required(),
   });
 }
+
+
+export function ValidateUserByEmail() {
+  return Joi.object({
+    email: Joi.string().email().required(),
+  });
+}

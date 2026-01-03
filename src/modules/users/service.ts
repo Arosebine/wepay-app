@@ -224,10 +224,91 @@ export async function createPin(id: string, payload: { pin: string }) {
   return user;
 }
 
-export async function verifyUserPin(
-  hashedPin: string,
-  payload: { pin: string },
-) {
+
+export async function createUserWallet(id: string, payload: { email: string },) {
+ 
+  const { user, shouldCreateWallet } = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id },
+      data: { email: payload.email },
+      include: { address: true },
+    });
+
+    if (user.embedlyCustomerId) {
+      return { user, shouldCreateWallet: false };
+    }
+
+    await tx.outboxEvent.create({
+      data: {
+        aggregateId: user.id,
+        topic: 'embedly.user.wallet.creation.initiated',
+        payload: { userId: user.id },
+      },
+    });
+
+    return { user, shouldCreateWallet: true };
+  });
+
+  
+  if (!shouldCreateWallet) {
+    return user;
+  }
+
+  
+  const customer = await Embedly.customers.personal({
+    address: user.address?.streetLine ?? 'wepay street',
+    city: user.address?.city ?? 'nigeria',
+    country: user.address?.country ?? 'NG',
+    dob: toISODate(user.dob ? user.dob : '') as string,
+    firstName: user.name?.split(' ')[0] ?? '',
+    lastName: user.name?.split(' ')[1] ?? '',
+    middleName: '', // middleName: user.name?.split(' ')[1] ?? '',
+    mobileNumber: user.phone!,
+    emailAddress: user.email!,
+  });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { embedlyCustomerId: customer.id },
+  });
+
+  const verified = await Embedly.customers.verifyKYC({
+    bvn: user.bvn!,
+    customerId: customer.id,
+  });
+
+  if (!verified) {
+    throw new Error('Embedly KYC failed');
+  }
+
+  const wallet = await Embedly.wallets.create({
+    userId: user.id,
+    customerId: customer.id,
+    currency: 'NGN',
+    name: `WePay-${user.id}`,
+  });
+
+  await WalletService.create({
+    userId: user.id,
+    id: wallet.id,
+    accountNumber: wallet.virtualAccount?.accountNumber,
+    bankName: wallet.virtualAccount?.bankName,
+    bankCode: wallet.virtualAccount?.bankCode,
+  });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      bvn: hashToken(user.bvn!),
+    },
+  });
+
+  return user;
+}
+
+
+
+export async function verifyUserPin(hashedPin: string, payload: { pin: string },) {
   return await verifyPin(hashedPin, payload.pin);
 }
 
