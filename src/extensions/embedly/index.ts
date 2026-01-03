@@ -57,7 +57,7 @@ class Customer {
         address: sanitizedAddress,
       };
 
-      console.log(data, 'Embedly API Call');
+      // console.log(data, 'Embedly API Call');
 
       const res = await Client.post('/customers/add', data);
       const { data: result } = res;

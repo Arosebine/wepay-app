@@ -11,6 +11,7 @@ import {
   ValidateFingerPrint,
   ValidateUniqueID,
   ValidatePhone,
+  ValidateUserByEmail,
 } from './validator';
 import CustomError from '@/utils/customError';
 import { toISODate, useErrorParser } from '@/utils';
@@ -143,6 +144,29 @@ export class Controller {
 
       return res.status(200).json({
         message: 'User pin added successfully',
+        success: true,
+        data: updatedUser,
+      });
+    } catch (error: any) {
+      const e = useErrorParser(error);
+      return res.status(e.status).json(e);
+    }
+  }
+
+
+  static async createUserWallet(req: Request, res: Response) {
+    try {
+      const user = req?.user;
+      if (!user) throw new CustomError('Unauthorized', 403);
+
+      const { error, value } = ValidateUserByEmail().validate(req.body);
+      if (error) throw new Error(error.details[0].message);
+      
+      const ID = user.id;
+      const updatedUser = await userService.createUserWallet(ID, value);
+
+      return res.status(200).json({
+        message: 'User wallet created successfully',
         success: true,
         data: updatedUser,
       });

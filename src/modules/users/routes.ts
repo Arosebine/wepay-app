@@ -15,5 +15,6 @@ router.post('/:id/verify', Auth, Controller.verifyPin);
 router.post('/:id/fingerprint', Controller.captureFingerPrint);
 router.post('/phone', Controller.verifyUserByPhone);
 router.post('/id', Controller.verifyUserByUniqueId);
+router.post('/wallet-email', Auth, Controller.createUserWallet);
 
 export default router;
