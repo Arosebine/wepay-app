@@ -166,7 +166,7 @@ export class Controller {
       const updatedUser = await userService.createUserWallet(ID, value);
 
       return res.status(200).json({
-        message: 'User wallet created successfully',
+        message: 'User wallets created successfully',
         success: true,
         data: updatedUser,
       });
